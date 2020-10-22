@@ -1,0 +1,36 @@
+{
+  "name": "yesmom-security-backend",
+  "version": "1.0.0",
+  "description": "Backend del api de seguridad de yesmom",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist",
+    "build": "babel src --out-dir dist",
+    "clean": "rimraf dist",
+    "dev": "nodemon src --exec babel-node"
+  },
+  "author": "Isaac Coronado",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.775.0",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.0.0",
+    "dist": "^0.1.2",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "moment": "^2.29.1",
+    "mongoose": "^5.10.5",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.11.6",
+    "@babel/node": "^7.10.5",
+    "@babel/preset-env": "^7.11.5",
+    "nodemon": "^2.0.4",
+    "rimraf": "^3.0.2"
+  }
+}
