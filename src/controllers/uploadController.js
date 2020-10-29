@@ -1,9 +1,13 @@
 import AWS from 'aws-sdk';
 import fs from 'fs';
 import path from 'path';
+import { isValidObjectId } from 'mongoose';
+
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
 import config from '../config';
+import * as ErrConst from '../constant/errors/codes';
+import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
@@ -57,6 +61,21 @@ export const uploadImage = async (value)=>{
 }
 
 export const saveData = async(req, res)=>{
+
+    if(req.body.payload.titulo === undefined 
+        || req.body.payload.autor === undefined
+        || req.body.payload.contenido === undefined
+        || req.body.payload.imgBlog === undefined
+        || req.body.payload.imgAutor === undefined
+        || req.body.payload.titulo
+        || req.body.payload.autor
+        || req.body.payload.contenido
+        || req.body.payload.imgBlog
+        || req.body.payload.imgAutor){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+
+
     let parameters =  req.body;
     
     let arrayFiles = [];
@@ -147,6 +166,71 @@ export const saveData = async(req, res)=>{
 
 }
 
+export const getImageBlog = async(element)=>{
 
+    if(element.imgPrincipal === undefined 
+        || element.imgAutor === undefined
+        || !element.imgPrincipal
+        || !element.imgAutor){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+    // VALIDAR ID
+    if(!isValidObjectId(element.imgPrincipal) || !isValidObjectId(element.imgAutor)){
+        const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+        return result;
+    };
+
+    //REALIZAR BUSQUEDA
+
+        const images = await Image.find({
+            "_id" : { "$in":[element.imgPrincipal, element.imgAutor]}
+        }) 
+        if(images.length === 0){
+            const result = (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+            return result;
+        }
+    
+        return images;
+
+}
+
+export const getBlogByParameters = async(req, res)=>{
+
+    
+    if(req.body.titulo === undefined
+        || !req.body.titulo
+        || req.body.autor === undefined
+        || !req.body.autor){
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+        }
+    const blogResult = await Blog.find({$and:[
+                                       { $or: [{titulo: req.body.titulo},
+                                               {autor: req.body.autor}
+                                              ]},
+                                       { $or:[{estado:true}]}
+                                      ]})
+      
+    if(blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+    }
+
+    let arrayResult = [];
+    let count = 0;
+
+    blogResult.forEach(async (element,index)=>{
+        const images = await getImageBlog(element);
+        arrayResult.push(images);
+        count = count +1;
+        if (count > index){
+
+            if(arrayResult.length === 0){
+                return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));   
+            }
+
+            return res.json(arrayResult);
+        }
+    });
+    
+}
 
 
