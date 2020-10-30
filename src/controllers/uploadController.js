@@ -25,7 +25,7 @@ export const uploadImage = async (value)=>{
     let extension = path.extname(pathImage);
     let file = path.basename(pathImage,extension);
       
-    let imageRemoteName = file + '_' + new Date().getTime() + DomainConstant.EXTENSION_IMAGE.PNG;
+    let imageRemoteName = file + '_' + new Date().getTime() + extension;
     
     AWS.config.update({
         accessKeyId:ACCESS_KEY,
@@ -67,11 +67,11 @@ export const saveData = async(req, res)=>{
         || req.body.payload.contenido === undefined
         || req.body.payload.imgBlog === undefined
         || req.body.payload.imgAutor === undefined
-        || req.body.payload.titulo
-        || req.body.payload.autor
-        || req.body.payload.contenido
-        || req.body.payload.imgBlog
-        || req.body.payload.imgAutor){
+        || !req.body.payload.titulo
+        || !req.body.payload.autor
+        || !req.body.payload.contenido
+        || !req.body.payload.imgBlog
+        || !req.body.payload.imgAutor){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
 
