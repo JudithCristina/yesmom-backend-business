@@ -67,11 +67,15 @@ export const saveData = async(req, res)=>{
         || req.body.payload.contenido === undefined
         || req.body.payload.imgBlog === undefined
         || req.body.payload.imgAutor === undefined
+        || req.body.payload.estado === undefined
+        || req.body.payload.fecha === undefined
         || !req.body.payload.titulo
         || !req.body.payload.autor
         || !req.body.payload.contenido
         || !req.body.payload.imgBlog
-        || !req.body.payload.imgAutor){
+        || !req.body.payload.imgAutor
+        || !req.body.payload.estado
+        || !req.body.payload.fecha){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
 
@@ -136,8 +140,8 @@ export const saveData = async(req, res)=>{
                 paramsBlog.titulo = parameters.payload.titulo;
                 paramsBlog.autor = parameters.payload.autor;
                 paramsBlog.contenido = parameters.payload.contenido;
-                paramsBlog.estado = DomainConstant.ESTADO_BLOG.ACTIVO;
-                paramsBlog.fecha = new Date(Date.now()).toISOString();
+                paramsBlog.estado = parameters.payload.estado;
+                paramsBlog.fecha = new Date(parameters.payload.fecha).toISOString();
                 paramsBlog.imgPrincipal = principalImage
                 paramsBlog.imgAutor = authorImage;
         
