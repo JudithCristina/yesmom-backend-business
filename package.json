@@ -23,7 +23,8 @@
     "jsonwebtoken": "^8.5.1",
     "moment": "^2.29.1",
     "mongoose": "^5.10.5",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "multiparty": "^4.2.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.11.6",

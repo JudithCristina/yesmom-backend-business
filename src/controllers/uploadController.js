@@ -61,112 +61,123 @@ export const uploadImage = async (value)=>{
 }
 
 export const saveData = async(req, res)=>{
-
-    if(req.body.payload.titulo === undefined 
-        || req.body.payload.autor === undefined
-        || req.body.payload.contenido === undefined
-        || req.body.payload.imgBlog === undefined
-        || req.body.payload.imgAutor === undefined
-        || req.body.payload.estado === undefined
-        || req.body.payload.fecha === undefined
-        || !req.body.payload.titulo
-        || !req.body.payload.autor
-        || !req.body.payload.contenido
-        || !req.body.payload.imgBlog
-        || !req.body.payload.imgAutor
-        || !req.body.payload.estado
-        || !req.body.payload.fecha){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
-    }
-
-
-    let parameters =  req.body;
-    
-    let arrayFiles = [];
-
-    let imgJsonBlog = {};
-    imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
-    imgJsonBlog.file = parameters.payload.imgBlog;
-
-    arrayFiles.push(imgJsonBlog);
-
-    let imgJsonAutor = {};
-
-    imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
-    imgJsonAutor.file = parameters.payload.imgAutor;
-
-    arrayFiles.push(imgJsonAutor);
-
-    let count = 0;
-    let principalImage;
-    let authorImage;
-    let response = {};
-
-    try{
-        arrayFiles.forEach(async (element)=>{
-            const valor = await uploadImage(element);
-                  
-            let url = valor.url;
-            let name = valor.name;
-            let typeImage = valor.typeImage;
-         
-            let tagString = valor.response.ETag;
-            const tag = await Util.findString(tagString);
-    
-            let result = {};
+    const form = new multiparty.Form();
+    form.parse(req,async(error, fields, files)=>{
+        if(error){
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
+        }
+        if(!files.imgBlog
+            || !files.imgAutor
+            || !fields.titulo
+            || !fields.autor
+            || !fields.contenido
+            || !fields.estado
+            || !fields.fecha
             
-            result.name = name;
-            result.tag = tag;
-            result.url = url;
-            result.typeImage = typeImage;
+            || files.imgBlog.length ===0
+            || files.imgAutor.length ===0
+            || fields.titulo.length ===0
+            || fields.autor.length ===0
+            || fields.contenido.length ===0
+            || fields.estado.length ===0
+            || fields.fecha.length ===0){
+
+                return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+        }
+        // CONTINUO CON EL FLUJO
+        let parameters = {};
+        parameters.files = files;
+        parameters.fields = fields;
+ 
+        let arrayFiles = [];
+ 
+        let imgJsonBlog = {};
+        imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
+        imgJsonBlog.file = parameters.files.imgBlog[0].path;
+        imgJsonBlog.originalFilename = parameters.files.imgBlog[0].originalFilename;
     
-            const newImage = new Image(result);
-            const image = await newImage.save();
-           
-            if(principalImage==undefined){
-            principalImage = (typeImage===DomainConstant.TYPE_IMAGE.PRINCIPAL)?image._id:undefined;
-            }
-            if(authorImage===undefined){
-                authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
+        arrayFiles.push(imgJsonBlog);
     
-            }
-      
-            count = count +1
+        let imgJsonAutor = {};
     
-            if(count == 2 && principalImage!== undefined && authorImage!==undefined){
+        imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
+        imgJsonAutor.file = parameters.files.imgAutor[0].path;
+        imgJsonAutor.originalFilename = parameters.files.imgAutor[0].originalFilename;
     
-                // LUEGO INSERTAR EN BLOG
-                let paramsBlog = {};
-                paramsBlog.titulo = parameters.payload.titulo;
-                paramsBlog.autor = parameters.payload.autor;
-                paramsBlog.contenido = parameters.payload.contenido;
-                paramsBlog.estado = parameters.payload.estado;
-                paramsBlog.fecha = new Date(parameters.payload.fecha).toISOString();
-                paramsBlog.imgPrincipal = principalImage
-                paramsBlog.imgAutor = authorImage;
+        arrayFiles.push(imgJsonAutor);
+    
+        let count = 0;
+        let principalImage;
+        let authorImage;
+        let response = {};
+    
+        try{
+            arrayFiles.forEach(async (element)=>{
+                const valor = await uploadImage(element);
+                      
+                let url = valor.url;
+                let name = valor.name;
+                let typeImage = valor.typeImage;
+             
+                let tagString = valor.response.ETag;
+                const tag = await Util.findString(tagString);
         
-                const newBlog = new Blog(paramsBlog);
-                await newBlog.save();
-
-                response.subida = true;
-                response.code = DomainConstant.SUCCESS;
-
-                res.json({
-                    response
-                })
-            }
+                let result = {};
+                
+                result.name = name;
+                result.tag = tag;
+                result.url = url;
+                result.typeImage = typeImage;
+        
+                const newImage = new Image(result);
+                const image = await newImage.save();
+               
+                if(principalImage==undefined){
+                principalImage = (typeImage===DomainConstant.TYPE_IMAGE.PRINCIPAL)?image._id:undefined;
+                }
+                if(authorImage===undefined){
+                    authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
+        
+                }
+          
+                count = count +1
+        
+                if(count == 2 && principalImage!== undefined && authorImage!==undefined){
+        
+                    // LUEGO INSERTAR EN BLOG
+                    let paramsBlog = {};
+                    paramsBlog.titulo = parameters.fields.titulo[0];
+                    paramsBlog.autor = parameters.fields.autor[0];
+                    paramsBlog.contenido = parameters.fields.contenido[0];
+                    paramsBlog.estado = parameters.fields.estado[0];
+                    paramsBlog.fecha = new Date(parameters.fields.fecha[0]).toISOString();
+                    paramsBlog.imgPrincipal = principalImage
+                    paramsBlog.imgAutor = authorImage;
             
-        });
+                    const newBlog = new Blog(paramsBlog);
+                    await newBlog.save();
     
-
-    }catch(err){
-        console.log('[Error]', err);
-        response.subida = false;
-        response.message = DomainConstant.ERROR_INTERNO;
-        res.json({
-            response
-        })
-    }
+                    response.subida = true;
+                    response.code = DomainConstant.SUCCESS;
+    
+                    res.json({
+                        response
+                    })
+                }
+                
+            });
+        
+    
+        }catch(err){
+            console.log('[Error]', err);
+            response.subida = false;
+            response.message = DomainConstant.ERROR_INTERNO;
+            res.json({
+                response
+            });
+        }
+    
+    });
 
 }
 
