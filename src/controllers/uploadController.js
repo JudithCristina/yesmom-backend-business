@@ -2,6 +2,7 @@ import AWS from 'aws-sdk';
 import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
+import multiparty from 'multiparty';
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -149,7 +150,7 @@ export const saveData = async(req, res)=>{
                     paramsBlog.titulo = parameters.fields.titulo[0];
                     paramsBlog.autor = parameters.fields.autor[0];
                     paramsBlog.contenido = parameters.fields.contenido[0];
-                    paramsBlog.estado = parameters.fields.estado[0];
+                    paramsBlog.estado = (parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false;
                     paramsBlog.fecha = new Date(parameters.fields.fecha[0]).toISOString();
                     paramsBlog.imgPrincipal = principalImage
                     paramsBlog.imgAutor = authorImage;
