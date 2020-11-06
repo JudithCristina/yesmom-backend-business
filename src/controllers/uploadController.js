@@ -12,7 +12,6 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
-import { Domain } from 'domain';
 
 export const uploadImage = async (value)=>{
     let input = value;
@@ -213,24 +212,59 @@ export const getImageBlog = async(element)=>{
 
 export const getBlogByParameters = async(req, res)=>{
 
-    
     if(req.body.titulo === undefined
         || !req.body.titulo
         || req.body.autor === undefined
-        || !req.body.autor){
+        || !req.body.autor
+        || req.body.userType === undefined
+        || !req.body.userType){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
         }
     const blogResult = await Blog.find({$and:[
-                                       { $or: [{titulo: req.body.titulo},
-                                               {autor: req.body.autor}
+                                       { $or: [{titulo: req.body.titulo.toString()},
+                                               {autor: req.body.autor.toString()}
                                               ]},
                                        { $or:[{estado:true}]}
                                       ]})
-      
     if(blogResult.length === 0){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
     }
 
+    const response = await Promise.all(
+
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            element.resultado = arrayResult;
+
+                return element.resultado;
+            
+         })
+
+    );
+
+    return res.json(response); 
+    
+}
+
+export const getBlog = async(req,res)=>{
+    if(req.body.userType === undefined
+        || !req.body.userType){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+    }
+    let blogResult;
+    if(req.body.userType===DomainConstant.USER_TYPE.ADMIN){
+        blogResult = await Blog.find();
+    }else if(req.body.userType===DomainConstant.USER_TYPE.USER){
+        blogResult = await Blog.find({estado: true})
+    }else{
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+    } 
+    if(!blogResult || blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
+    // return res.json(result);
     let arrayResult = [];
     let count = 0;
 
@@ -247,26 +281,6 @@ export const getBlogByParameters = async(req, res)=>{
             return res.json(arrayResult);
         }
     });
-    
-}
-
-export const getBlog = async(req,res)=>{
-    if(req.body.userType === undefined
-        || !req.body.userType){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
-    }
-    let result;
-    if(req.body.userType===DomainConstant.USER_TYPE.ADMIN){
-        result = await Blog.find();
-    }else if(req.body.userType===DomainConstant.USER_TYPE.USER){
-        result = await Blog.find({estado: true})
-    }else{
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
-    } 
-    if(!result || result.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
-    }
-    return res.json(result);
 }
 
 
