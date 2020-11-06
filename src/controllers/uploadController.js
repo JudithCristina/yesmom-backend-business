@@ -234,11 +234,14 @@ export const getBlogByParameters = async(req, res)=>{
 
         blogResult.map(async(element)=>{
             let arrayResult = [];
+            let jsonResult = {};
             const images = await getImageBlog(element);
             arrayResult.push(images);
-            element.resultado = arrayResult;
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult;
+            element.resultado = jsonResult;
 
-                return element.resultado;
+            return element.resultado;
             
          })
 
@@ -264,23 +267,21 @@ export const getBlog = async(req,res)=>{
     if(!blogResult || blogResult.length === 0){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
     }
-    // return res.json(result);
-    let arrayResult = [];
-    let count = 0;
 
-    blogResult.forEach(async (element,index)=>{
-        const images = await getImageBlog(element);
-        arrayResult.push(images);
-        count = count +1;
-        if (count > index){
+    const response = await Promise.all(
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            let jsonResult = {};
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult;
+            element.resultado = jsonResult;
 
-            if(arrayResult.length === 0){
-                return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));   
-            }
-
-            return res.json(arrayResult);
-        }
-    });
+            return element.resultado;
+        })
+    );
+    return res.json(response);
 }
 
 
