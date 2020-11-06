@@ -18,3 +18,7 @@ module,exports.ESTADOS_BLOG={
     ACTIVO: 'activo',
     INACTIVO: 'inactivo'
 }
+module.exports.USER_TYPE={
+    ADMIN: 'admin',
+    USER: 'user'
+}

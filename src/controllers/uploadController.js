@@ -12,6 +12,7 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
+import { Domain } from 'domain';
 
 export const uploadImage = async (value)=>{
     let input = value;
@@ -247,6 +248,25 @@ export const getBlogByParameters = async(req, res)=>{
         }
     });
     
+}
+
+export const getBlog = async(req,res)=>{
+    if(req.body.userType === undefined
+        || !req.body.userType){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+    }
+    let result;
+    if(req.body.userType===DomainConstant.USER_TYPE.ADMIN){
+        result = await Blog.find();
+    }else if(req.body.userType===DomainConstant.USER_TYPE.USER){
+        result = await Blog.find({estado: true})
+    }else{
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+    } 
+    if(!result || result.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
+    return res.json(result);
 }
 
 
