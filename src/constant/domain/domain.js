@@ -14,3 +14,7 @@ module.exports.EXTENSION_IMAGE = {
     PNG: '.png',
     JPG: '.jpg',
 }
+module,exports.ESTADOS_BLOG={
+    ACTIVO: 'activo',
+    INACTIVO: 'inactivo'
+}
