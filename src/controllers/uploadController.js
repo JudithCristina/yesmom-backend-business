@@ -2,12 +2,7 @@ import AWS from 'aws-sdk';
 import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
-<<<<<<< HEAD
-const fileType = require('file-type');
-const multiparty = require('multiparty')
-=======
 import multiparty from 'multiparty';
->>>>>>> 2a84a92dc481c668c7aa07549dfb4758e8640db3
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -69,58 +64,6 @@ export const uploadImage = async (value)=>{
 }
 
 export const saveData = async(req, res)=>{
-<<<<<<< HEAD
-
-    if(req.body.payload.titulo === undefined 
-        || req.body.payload.autor === undefined
-        || req.body.payload.contenido === undefined
-        || req.body.payload.imgBlog === undefined
-        || req.body.payload.imgAutor === undefined
-        || !req.body.payload.titulo
-        || !req.body.payload.autor
-        || !req.body.payload.contenido
-        || !req.body.payload.imgBlog
-        || !req.body.payload.imgAutor){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
-    }
-
-
-    let parameters =  req.body;
-    
-    let arrayFiles = [];
-
-    let imgJsonBlog = {};
-    imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
-    imgJsonBlog.file = parameters.payload.imgBlog;
-
-    arrayFiles.push(imgJsonBlog);
-
-    console.log(imgJsonBlog, "lili")
-    let imgJsonAutor = {};
-
-    imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
-    imgJsonAutor.file = parameters.payload.imgAutor;
-
-    arrayFiles.push(imgJsonAutor);
-
-    let count = 0;
-    let principalImage;
-    let authorImage;
-    let response = {};
-
-    try{
-        arrayFiles.forEach(async (element)=>{
-            const valor = await uploadImage(element);
-                  
-            let url = valor.url;
-            let name = valor.name;
-            let typeImage = valor.typeImage;
-         
-            let tagString = valor.response.ETag;
-            const tag = await Util.findString(tagString);
-    
-            let result = {};
-=======
     const form = new multiparty.Form();
     form.parse(req,async(error, fields, files)=>{
         if(error){
@@ -133,7 +76,6 @@ export const saveData = async(req, res)=>{
             || !fields.contenido
             || !fields.estado
             || !fields.fecha
->>>>>>> 2a84a92dc481c668c7aa07549dfb4758e8640db3
             
             || files.imgBlog.length ===0
             || files.imgAutor.length ===0
@@ -310,10 +252,4 @@ export const getBlogByParameters = async(req, res)=>{
 }
 
 
-export const obtenerFormData = async(request, response)=>{
-    const form = new multiparty.Form();
-    form.parse(request, async (error, fields, files) => {
-        console.log(files,"prueba")
-        console.log(fields,"judith")
-      });
-}
+
