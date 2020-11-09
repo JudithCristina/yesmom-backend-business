@@ -2,6 +2,8 @@ import AWS from 'aws-sdk';
 import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
+const fileType = require('file-type');
+const multiparty = require('multiparty')
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -14,13 +16,14 @@ import Blog from '../models/blog.model';
 
 export const uploadImage = async (value)=>{
     let input = value;
-  
+
     const BUCKET = config.BUCKET;
     const REGION = config.REGION;
     const ACCESS_KEY = config.ACCESS_KEY;
     const SECRET_KEY = config.SECRET_KEY;
     
     let pathImage = input.file;
+    console.log(pathImage, "narda")
 
     let extension = path.extname(pathImage);
     let file = path.basename(pathImage,extension);
@@ -36,11 +39,12 @@ export const uploadImage = async (value)=>{
     
     return new Promise((resolve, reject)=>{
         const  s3 = new AWS.S3();
+        // console.log('**************', AWS)
         s3.putObject({
             Bucket: BUCKET,
             Body: fs.readFileSync(pathImage),
             Key:imageRemoteName
-        },function(err, response){
+        }, function(err, response){
             if(err){
                 console.log("[AWSModel.upload.ERROR]", err);
                 return resolve({
@@ -86,6 +90,7 @@ export const saveData = async(req, res)=>{
 
     arrayFiles.push(imgJsonBlog);
 
+    console.log(imgJsonBlog, "lili")
     let imgJsonAutor = {};
 
     imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
@@ -234,3 +239,10 @@ export const getBlogByParameters = async(req, res)=>{
 }
 
 
+export const obtenerFormData = async(request, response)=>{
+    const form = new multiparty.Form();
+    form.parse(request, async (error, fields, files) => {
+        console.log(files,"prueba")
+        console.log(fields,"judith")
+      });
+}
