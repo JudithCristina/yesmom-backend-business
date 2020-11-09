@@ -214,41 +214,82 @@ export const getImageBlog = async(element)=>{
 
 export const getBlogByParameters = async(req, res)=>{
 
-    
     if(req.body.titulo === undefined
         || !req.body.titulo
         || req.body.autor === undefined
-        || !req.body.autor){
+        || !req.body.autor
+        || req.body.userType === undefined
+        || !req.body.userType){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
         }
     const blogResult = await Blog.find({$and:[
-                                       { $or: [{titulo: req.body.titulo},
-                                               {autor: req.body.autor}
+                                       { $or: [{titulo: req.body.titulo.toString()},
+                                               {autor: req.body.autor.toString()}
                                               ]},
                                        { $or:[{estado:true}]}
                                       ]})
-      
     if(blogResult.length === 0){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
     }
 
-    let arrayResult = [];
-    let count = 0;
+    const response = await Promise.all(
 
-    blogResult.forEach(async (element,index)=>{
-        const images = await getImageBlog(element);
-        arrayResult.push(images);
-        count = count +1;
-        if (count > index){
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            let jsonResult = {};
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult;
+            element.resultado = jsonResult;
 
-            if(arrayResult.length === 0){
-                return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));   
-            }
+            return element.resultado;
+            
+         })
 
-            return res.json(arrayResult);
-        }
-    });
+    );
+    if(!response || response.length ===0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
+
+    return res.json(response); 
     
+}
+
+export const getBlog = async(req,res)=>{
+    if(req.body.userType === undefined
+        || !req.body.userType){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+    }
+    let blogResult;
+    if(req.body.userType===DomainConstant.USER_TYPE.ADMIN){
+        blogResult = await Blog.find();
+    }else if(req.body.userType===DomainConstant.USER_TYPE.USER){
+        blogResult = await Blog.find({estado: true})
+    }else{
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+    } 
+    if(!blogResult || blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
+
+    const response = await Promise.all(
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            let jsonResult = {};
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult;
+            element.resultado = jsonResult;
+
+            return element.resultado;
+        })
+    );
+    if(!response || response.length ===0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
+    return res.json(response);
 }
 
 
