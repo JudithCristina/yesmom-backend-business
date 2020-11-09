@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-config({path:"variable.env"});
+config();
 
 
 module.exports = {
