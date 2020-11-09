@@ -246,6 +246,9 @@ export const getBlogByParameters = async(req, res)=>{
          })
 
     );
+    if(!response || response.length ===0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
 
     return res.json(response); 
     
@@ -281,6 +284,9 @@ export const getBlog = async(req,res)=>{
             return element.resultado;
         })
     );
+    if(!response || response.length ===0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+    }
     return res.json(response);
 }
 
