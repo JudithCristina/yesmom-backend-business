@@ -28,6 +28,10 @@ const blogSchema = new Schema({
     imgAutor:{
         type:String,
         required:false
+    },
+    eliminado:{
+        type:Boolean,
+        required:true
     }
 })
 

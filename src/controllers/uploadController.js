@@ -256,14 +256,14 @@ export const getBlogByParameters = async(req, res)=>{
 }
 
 export const getBlog = async(req,res)=>{
-    if(req.body.userType === undefined
-        || !req.body.userType){
+    if(req.params.userType === undefined
+        || !req.params.userType){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
     }
     let blogResult;
-    if(req.body.userType===DomainConstant.USER_TYPE.ADMIN){
+    if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
         blogResult = await Blog.find();
-    }else if(req.body.userType===DomainConstant.USER_TYPE.USER){
+    }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
         blogResult = await Blog.find({estado: true})
     }else{
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
@@ -422,33 +422,33 @@ export const updateBlog = async(req,res)=>{
 
 }
 export const deleteBlog = async(req,res)=>{
+
     // CAMBIAR DE POST A GET -> cambiar a req.params
-    const form = new multiparty.Form();
-    form.parse(req, async(error,fields,files)=>{
-        if(error){
-            return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
-        }
-        if(!fields.idBlog){
+    //const form = new multiparty.Form();
+    //form.parse(req, async(error,fields,files)=>{
+        if(!req.params.idBlog || req.params.idBlog === undefined){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));  
         }
         // VALIDAR ID
-        if(!isValidObjectId(fields.idBlog)){
+        if(!isValidObjectId(req.params.idBlog)){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
         };
         try{
             // DELETE LÓGICO (UPDATE estado = false)
             const result = await Blog.updateOne(
-                {"_id":fields.idBlog[0]},
-                {$set:{"estado":(fields.estado[0]===DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false}}
+                {"_id":req.params.idBlog},
+                {$set:{"estado":false,
+                       "eliminado": true}}
                 // TO DO: AGREGAR CAMPO A LA COLECCION 'ELIMINADO: TRUE OR FALSE'
             )
+            response.idBlog = req.params.idBlog
             response.delete = true;
             response.code = DomainConstant.SUCCESS;
 
-            if(result){
+            if(!result){
                 return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
             }
-            return res.json(result);
+            return res.json(response);
         }catch(err){
             console.log('[Error]', err);
             response.delete = false;
@@ -459,7 +459,7 @@ export const deleteBlog = async(req,res)=>{
         }
 
 
-    })
+    //})
 }
 
 
