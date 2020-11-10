@@ -12,6 +12,7 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
+import { response } from 'express';
 
 export const uploadImage = async (value)=>{
     let input = value;
@@ -288,6 +289,177 @@ export const getBlog = async(req,res)=>{
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
     }
     return res.json(response);
+}
+
+export const updateBlog = async(req,res)=>{
+
+        const form = new multiparty.Form();
+        form.parse(req, async(error, fields,files)=>{
+            if(error){
+                return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
+            }
+            if( !fields.idBlog
+                || !files.imgBlog
+                || !files.imgAutor
+                || !fields.titulo
+                || !fields.autor
+                || !fields.contenido
+                || !fields.estado
+                || !fields.fecha
+                
+                || fields.idBlog.length ===0
+                || files.imgBlog.length ===0
+                || files.imgAutor.length ===0
+                || fields.titulo.length ===0
+                || fields.autor.length ===0
+                || fields.contenido.length ===0
+                || fields.estado.length ===0
+                || fields.fecha.length ===0){
+    
+                    return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+            }
+            // VALIDAR ID
+            if(!isValidObjectId(fields.idBlog[0])){
+                const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+                return result;
+            };
+
+            // SUBIR IMAGEN A AWS
+            // TO DO: VALIDAR SI HAY CAMBIO DE IMGS
+            let parameters = {};
+            parameters.files = files;
+            parameters.fields = fields;
+     
+            let arrayFiles = [];
+     
+            let imgJsonBlog = {};
+            imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
+            imgJsonBlog.file = parameters.files.imgBlog[0].path;
+            imgJsonBlog.originalFilename = parameters.files.imgBlog[0].originalFilename;
+        
+            arrayFiles.push(imgJsonBlog);
+        
+            let imgJsonAutor = {};
+        
+            imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
+            imgJsonAutor.file = parameters.files.imgAutor[0].path;
+            imgJsonAutor.originalFilename = parameters.files.imgAutor[0].originalFilename;
+        
+            arrayFiles.push(imgJsonAutor);
+        
+            let count = 0;
+            let principalImage;
+            let authorImage;
+            let response = {};
+
+            try{
+                arrayFiles.forEach(async(element)=>{
+                    const valor = await uploadImage(element);
+
+                    let url = valor.url;
+                    let name = valor.name;
+                    let typeImage = valor.typeImage;
+
+                    let tagString = valor.response.ETag;
+                    const tag = await Util.findString(tagString);
+            
+                    let result = {};
+                    
+                    result.name = name;
+                    result.tag = tag;
+                    result.url = url;
+                    result.typeImage = typeImage;
+            
+                    const newImage = new Image(result);
+                    const image = await newImage.save();
+                   
+                    if(principalImage==undefined){
+                    principalImage = (typeImage===DomainConstant.TYPE_IMAGE.PRINCIPAL)?image._id:undefined;
+                    }
+                    if(authorImage===undefined){
+                        authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
+            
+                    }
+              
+                    count = count +1
+
+                    if(count == 2 && principalImage!== undefined && authorImage!==undefined){
+
+                        // ACTUALIZAR
+                        const result = await Blog.updateOne(
+                            {"_id": parameters.fields.idBlog[0]},
+                            {$set:{"titulo":parameters.fields.titulo[0],
+                                    "autor":parameters.fields.autor[0],
+                                    "contenido":parameters.fields.contenido[0],
+                                    "estado":(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
+                                    "fecha":new Date(parameters.fields.fecha[0]).toISOString(),
+                                    "imgPrincipal":principalImage, // TO DO:VALIDAR CAMPO
+                                    "imgAutor":authorImage, //TO DO: VALIDAR CAMPO
+                                    }
+                            }
+                        );
+                        response.update = true;
+                        response.code = DomainConstant.SUCCESS;
+                        
+                        if(result){
+                            return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
+                        }
+                        return res.json(result);
+
+                    }
+
+                              })
+            }catch(err){
+                console.log('[Error]', err);
+                response.update = false;
+                response.message = DomainConstant.ERROR_INTERNO;
+                res.json({
+                    response
+                });
+            }
+
+        })
+
+}
+export const deleteBlog = async(req,res)=>{
+    // CAMBIAR DE POST A GET -> cambiar a req.params
+    const form = new multiparty.Form();
+    form.parse(req, async(error,fields,files)=>{
+        if(error){
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
+        }
+        if(!fields.idBlog){
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));  
+        }
+        // VALIDAR ID
+        if(!isValidObjectId(fields.idBlog)){
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+        };
+        try{
+            // DELETE LÓGICO (UPDATE estado = false)
+            const result = await Blog.updateOne(
+                {"_id":fields.idBlog[0]},
+                {$set:{"estado":(fields.estado[0]===DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false}}
+                // TO DO: AGREGAR CAMPO A LA COLECCION 'ELIMINADO: TRUE OR FALSE'
+            )
+            response.delete = true;
+            response.code = DomainConstant.SUCCESS;
+
+            if(result){
+                return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
+            }
+            return res.json(result);
+        }catch(err){
+            console.log('[Error]', err);
+            response.delete = false;
+            response.message = DomainConstant.ERROR_INTERNO;
+            res.json({
+                response
+            });
+        }
+
+
+    })
 }
 
 
