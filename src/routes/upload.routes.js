@@ -6,4 +6,5 @@ import * as uploadCtrl from '../controllers/uploadController';
 router.post('/upload-image',uploadCtrl.saveData);
 router.get('/getBlog',uploadCtrl.getBlogByParameters);
 router.get('/getBlogAll',uploadCtrl.getBlog);
+router.get('/getBlogAll/:userType',uploadCtrl.getBlogAll);
 export default router;
