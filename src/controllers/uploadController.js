@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
 import multiparty from 'multiparty';
-import moment from 'moment';
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -133,7 +132,7 @@ export const saveData = async(req, res)=>{
                 result.typeImage = typeImage;
                 result.fecha = new Date().toISOString();
         
-                const newImage = new ImageTest(result);
+                const newImage = new Image(result);
                 const image = await newImage.save();
                
                 if(principalImage==undefined){
@@ -202,7 +201,7 @@ export const getImageBlog = async(element)=>{
 
     //REALIZAR BUSQUEDA
 
-        const images = await ImageTest.find({
+        const images = await Image.find({
             "_id" : { "$in":[element.imgPrincipal, element.imgAutor]}
         }) 
         if(images.length === 0){
@@ -213,20 +212,22 @@ export const getImageBlog = async(element)=>{
             images.map(async(element)=>{
                 let newUrlImage = {};
                 const urlImage = await getBucketImage(element.name);
-                console.log('*******Bucket', urlImage);
-                newUrlImage =element;
                 
                 if(urlImage.result){
+                    newUrlImage.name = element.name;
                     newUrlImage.url = urlImage.url;
+                    newUrlImage.typeImage = element.typeImage;
                 }else if(!urlImage.result){
+                    newUrlImage.name = element.name;
                     newUrlImage.url = "";
+                    newUrlImage.typeImage = element.typeImage;
                 }
-                
+                console.log('******************newUrlImage', newUrlImage)
                 return newUrlImage;
             })
         );
 
-        console.log('****************resulttttttttt', newImages);
+        console.log('****************newImages', newImages);
         return newImages;
 
 }
