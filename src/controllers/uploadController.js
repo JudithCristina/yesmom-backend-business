@@ -385,6 +385,10 @@ export const updateBlog = async(req,res)=>{
                     })
                 );
 
+                if(responseDelete[0].imagenes.length < 2){
+                    return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));        
+                }
+
                 // BORRO IMAGEN DE LA COLLECTION
                 const resultDeleteImage = await Promise.all(
                     blogResult.map(async (element)=>{
@@ -461,7 +465,7 @@ export const updateBlog = async(req,res)=>{
                     }
 
                 })
-                
+
             }catch(err){
                 console.log('[Error]', err);
                 response.update = false;
