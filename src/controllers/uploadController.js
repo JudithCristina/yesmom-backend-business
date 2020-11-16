@@ -12,7 +12,6 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
-import ImageTest from '../models/image.test.model';
 
 export const uploadImage = async (value)=>{
     let input = value;
