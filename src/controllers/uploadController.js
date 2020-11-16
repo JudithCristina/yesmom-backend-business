@@ -221,18 +221,16 @@ export const getImageBlog = async(element)=>{
                     newUrlImage.url = "";
                     newUrlImage.typeImage = element.typeImage;
                 }
-                console.log('******************newUrlImage', newUrlImage)
+
                 return newUrlImage;
             })
         );
 
-        console.log('****************newImages', newImages);
         return newImages;
 
 }
 
 export const getBlogByParameters = async(req, res)=>{
-console.log('**********', req.body);
     if(req.body.titulo === undefined
         || !req.body.titulo
         || req.body.autor === undefined
@@ -333,6 +331,9 @@ export const updateBlog = async(req,res)=>{
             if(error){
                 return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
             }
+            console.log('***********error', error);
+            console.log('***********fields', fields);
+            console.log('***********files', files);
             if( !req.params.idBlog
                 || !files.imgBlog
                 || !files.imgAutor
@@ -354,7 +355,7 @@ export const updateBlog = async(req,res)=>{
                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
             }
             // VALIDAR ID
-            if(!isValidObjectId(fields.idBlog[0])){
+            if(!isValidObjectId(req.params.idBlog)){
                 const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
                 return result;
             };
@@ -417,6 +418,7 @@ export const updateBlog = async(req,res)=>{
                         return element;
                     })
                 );
+                console.log('*********** 1. responseDelete s3', responseDelete)
 
                 if(responseDelete[0].imagenes.length < 2){
                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));        
@@ -437,13 +439,14 @@ export const updateBlog = async(req,res)=>{
                         element.imagesDelCollection = [jsonDel];
                         return element;
                     })
-                );                
+                );
+                console.log('***************2. resultDeleteImage -mongo', resultDeleteImage);               
 
                 // CONTINUO EL FLUJO
                 arrayFiles.forEach(async(element)=>{
                     const valor = await uploadImage(element);
 
-                    let url = valor.url;
+                    // let url = valor.url;
                     let name = valor.name;
                     let typeImage = valor.typeImage;
 
@@ -454,8 +457,11 @@ export const updateBlog = async(req,res)=>{
                     
                     result.name = name;
                     result.tag = tag;
-                    result.url = url;
+                    // result.url = url;
                     result.typeImage = typeImage;
+                    result.fecha = new Date().toISOString();
+
+                    console.log('*************3. result - upload', result);
             
                     const newImage = new Image(result);
                     const image = await newImage.save();
@@ -474,7 +480,7 @@ export const updateBlog = async(req,res)=>{
 
                         // ACTUALIZAR
                         const result = await Blog.updateOne(
-                            {"_id": parameters.fields.idBlog[0]},
+                            {"_id": req.params.idBlog},
                             {$set:{"titulo":parameters.fields.titulo[0],
                                     "autor":parameters.fields.autor[0],
                                     "contenido":parameters.fields.contenido[0],
@@ -489,6 +495,8 @@ export const updateBlog = async(req,res)=>{
                         response.update = true;
                         response.code = DomainConstant.SUCCESS;
                         response.content = resultDeleteImage;
+
+                        console.log('************4 - update')
                         
                         if(result){
                             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
@@ -689,7 +697,7 @@ export const updateTest = async(req,res)=>{
         arrayFiles.forEach(async (element)=>{
             const valor = await uploadImage(element);
            
-            let url = valor.url;
+            // let url = valor.url;
             let name = valor.name;
             let typeImage = valor.typeImage;
 
@@ -700,8 +708,9 @@ export const updateTest = async(req,res)=>{
             
             result.name = name;
             result.tag = tag;
-            result.url = url;
+            // result.url = url;
             result.typeImage = typeImage;
+            result.fecha = new Date().toISOString();
     
             const newImage = new Image(result);
             const image = await newImage.save();
@@ -892,7 +901,6 @@ export const getBucketImageTest = async(req, res)=>{
 }
 
 export const getBucketImage = async(fileName)=>{
-    console.log('************fileName', fileName);
     return new Promise((resolve,reject)=>{
         const s3 = new AWS.S3({
             accessKeyId: config.ACCESS_KEY,
