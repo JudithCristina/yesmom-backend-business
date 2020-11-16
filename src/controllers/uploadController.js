@@ -300,7 +300,7 @@ export const updateBlog = async(req,res)=>{
             if(error){
                 return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
             }
-            if( !fields.idBlog
+            if( !req.params.idBlog
                 || !files.imgBlog
                 || !files.imgAutor
                 || !fields.titulo
@@ -309,7 +309,7 @@ export const updateBlog = async(req,res)=>{
                 || !fields.estado
                 || !fields.fecha
                 
-                || fields.idBlog.length ===0
+                || req.params.idBlog === undefined
                 || files.imgBlog.length ===0
                 || files.imgAutor.length ===0
                 || fields.titulo.length ===0
@@ -354,7 +354,59 @@ export const updateBlog = async(req,res)=>{
             let authorImage;
             let response = {};
 
+            const blogResult = await getBlogById(req.params.idBlog);
+
             try{
+
+                // BORRO LAS IMAGENES ACTUALES DEL S3
+                const responseDelete = await Promise.all(
+                    blogResult.map(async (element)=>{
+                        const mapImage = await Promise.all(
+                            element.imagenes.map(async(item)=>{
+                                let arrayDel = [];
+                                let jsonDel = {};
+                                const delImage = await deleteImage(item.name)
+        
+                                if(delImage.result){
+                                    arrayDel.push(delImage.response)
+                                    jsonDel.name = arrayDel[0];
+                                    item.deleteItem = jsonDel;
+                                }
+        
+                                return item.deleteItem;
+                            })
+                        )
+                        
+                        if(mapImage.length > 0){
+                           element.imagenes = mapImage;
+                        }
+        
+                        return element;
+                    })
+                );
+
+                if(responseDelete[0].imagenes.length < 2){
+                    return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));        
+                }
+
+                // BORRO IMAGEN DE LA COLLECTION
+                const resultDeleteImage = await Promise.all(
+                    blogResult.map(async (element)=>{
+                        let arrayDel = [];
+                        let jsonDel = {};
+                        const responseDelImgPrincipal = await deleteImageOfCollection(element.blog.imgPrincipal);
+                        const responseDelImgAuthor = await deleteImageOfCollection(element.blog.imgAutor); 
+                        arrayDel.push(responseDelImgPrincipal);
+                        arrayDel.push(responseDelImgAuthor);
+                        jsonDel.imgPrincipalDel = responseDelImgPrincipal;
+                        jsonDel.imgAutorDel = responseDelImgAuthor;
+
+                        element.imagesDelCollection = [jsonDel];
+                        return element;
+                    })
+                );                
+
+                // CONTINUO EL FLUJO
                 arrayFiles.forEach(async(element)=>{
                     const valor = await uploadImage(element);
 
@@ -403,6 +455,7 @@ export const updateBlog = async(req,res)=>{
                         );
                         response.update = true;
                         response.code = DomainConstant.SUCCESS;
+                        response.content = resultDeleteImage;
                         
                         if(result){
                             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
@@ -411,7 +464,8 @@ export const updateBlog = async(req,res)=>{
 
                     }
 
-                              })
+                })
+
             }catch(err){
                 console.log('[Error]', err);
                 response.update = false;
