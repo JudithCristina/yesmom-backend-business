@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
 import multiparty from 'multiparty';
-import moment from 'moment';
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -13,7 +12,6 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
-import ImageTest from '../models/image.test.model';
 
 export const uploadImage = async (value)=>{
     let input = value;
@@ -133,7 +131,7 @@ export const saveData = async(req, res)=>{
                 result.typeImage = typeImage;
                 result.fecha = new Date().toISOString();
         
-                const newImage = new ImageTest(result);
+                const newImage = new Image(result);
                 const image = await newImage.save();
                
                 if(principalImage==undefined){
@@ -202,7 +200,7 @@ export const getImageBlog = async(element)=>{
 
     //REALIZAR BUSQUEDA
 
-        const images = await ImageTest.find({
+        const images = await Image.find({
             "_id" : { "$in":[element.imgPrincipal, element.imgAutor]}
         }) 
         if(images.length === 0){
@@ -213,26 +211,26 @@ export const getImageBlog = async(element)=>{
             images.map(async(element)=>{
                 let newUrlImage = {};
                 const urlImage = await getBucketImage(element.name);
-                console.log('*******Bucket', urlImage);
-                newUrlImage =element;
                 
                 if(urlImage.result){
+                    newUrlImage.name = element.name;
                     newUrlImage.url = urlImage.url;
+                    newUrlImage.typeImage = element.typeImage;
                 }else if(!urlImage.result){
+                    newUrlImage.name = element.name;
                     newUrlImage.url = "";
+                    newUrlImage.typeImage = element.typeImage;
                 }
-                
+
                 return newUrlImage;
             })
         );
 
-        console.log('****************resulttttttttt', newImages);
         return newImages;
 
 }
 
 export const getBlogByParameters = async(req, res)=>{
-console.log('**********', req.body);
     if(req.body.titulo === undefined
         || !req.body.titulo
         || req.body.autor === undefined
@@ -333,6 +331,9 @@ export const updateBlog = async(req,res)=>{
             if(error){
                 return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
             }
+            console.log('***********error', error);
+            console.log('***********fields', fields);
+            console.log('***********files', files);
             if( !req.params.idBlog
                 || !files.imgBlog
                 || !files.imgAutor
@@ -354,7 +355,7 @@ export const updateBlog = async(req,res)=>{
                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
             }
             // VALIDAR ID
-            if(!isValidObjectId(fields.idBlog[0])){
+            if(!isValidObjectId(req.params.idBlog)){
                 const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
                 return result;
             };
@@ -417,6 +418,7 @@ export const updateBlog = async(req,res)=>{
                         return element;
                     })
                 );
+                console.log('*********** 1. responseDelete s3', responseDelete)
 
                 if(responseDelete[0].imagenes.length < 2){
                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));        
@@ -437,13 +439,14 @@ export const updateBlog = async(req,res)=>{
                         element.imagesDelCollection = [jsonDel];
                         return element;
                     })
-                );                
+                );
+                console.log('***************2. resultDeleteImage -mongo', resultDeleteImage);               
 
                 // CONTINUO EL FLUJO
                 arrayFiles.forEach(async(element)=>{
                     const valor = await uploadImage(element);
 
-                    let url = valor.url;
+                    // let url = valor.url;
                     let name = valor.name;
                     let typeImage = valor.typeImage;
 
@@ -454,8 +457,11 @@ export const updateBlog = async(req,res)=>{
                     
                     result.name = name;
                     result.tag = tag;
-                    result.url = url;
+                    // result.url = url;
                     result.typeImage = typeImage;
+                    result.fecha = new Date().toISOString();
+
+                    console.log('*************3. result - upload', result);
             
                     const newImage = new Image(result);
                     const image = await newImage.save();
@@ -474,7 +480,7 @@ export const updateBlog = async(req,res)=>{
 
                         // ACTUALIZAR
                         const result = await Blog.updateOne(
-                            {"_id": parameters.fields.idBlog[0]},
+                            {"_id": req.params.idBlog},
                             {$set:{"titulo":parameters.fields.titulo[0],
                                     "autor":parameters.fields.autor[0],
                                     "contenido":parameters.fields.contenido[0],
@@ -489,6 +495,8 @@ export const updateBlog = async(req,res)=>{
                         response.update = true;
                         response.code = DomainConstant.SUCCESS;
                         response.content = resultDeleteImage;
+
+                        console.log('************4 - update')
                         
                         if(result){
                             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
@@ -689,7 +697,7 @@ export const updateTest = async(req,res)=>{
         arrayFiles.forEach(async (element)=>{
             const valor = await uploadImage(element);
            
-            let url = valor.url;
+            // let url = valor.url;
             let name = valor.name;
             let typeImage = valor.typeImage;
 
@@ -700,8 +708,9 @@ export const updateTest = async(req,res)=>{
             
             result.name = name;
             result.tag = tag;
-            result.url = url;
+            // result.url = url;
             result.typeImage = typeImage;
+            result.fecha = new Date().toISOString();
     
             const newImage = new Image(result);
             const image = await newImage.save();
@@ -892,7 +901,6 @@ export const getBucketImageTest = async(req, res)=>{
 }
 
 export const getBucketImage = async(fileName)=>{
-    console.log('************fileName', fileName);
     return new Promise((resolve,reject)=>{
         const s3 = new AWS.S3({
             accessKeyId: config.ACCESS_KEY,
