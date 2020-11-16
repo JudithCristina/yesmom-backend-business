@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { isValidObjectId } from 'mongoose';
 import multiparty from 'multiparty';
+import moment from 'moment';
 
 import * as Util from '../util/util';
 import * as DomainConstant from '../constant/domain/domain'
@@ -12,7 +13,7 @@ import * as ErrResponse from '../util/errors/errorResponse';
 
 import Image from '../models/image.model';
 import Blog from '../models/blog.model';
-
+import ImageTest from '../models/image.test.model';
 
 export const uploadImage = async (value)=>{
     let input = value;
@@ -117,7 +118,7 @@ export const saveData = async(req, res)=>{
             arrayFiles.forEach(async (element)=>{
                 const valor = await uploadImage(element);
                       
-                let url = valor.url;
+                // let url = valor.url;
                 let name = valor.name;
                 let typeImage = valor.typeImage;
              
@@ -128,10 +129,11 @@ export const saveData = async(req, res)=>{
                 
                 result.name = name;
                 result.tag = tag;
-                result.url = url;
+                // result.url = url;
                 result.typeImage = typeImage;
+                result.fecha = new Date().toISOString();
         
-                const newImage = new Image(result);
+                const newImage = new ImageTest(result);
                 const image = await newImage.save();
                
                 if(principalImage==undefined){
@@ -200,15 +202,32 @@ export const getImageBlog = async(element)=>{
 
     //REALIZAR BUSQUEDA
 
-        const images = await Image.find({
+        const images = await ImageTest.find({
             "_id" : { "$in":[element.imgPrincipal, element.imgAutor]}
         }) 
         if(images.length === 0){
             const result = (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
             return result;
         }
-    
-        return images;
+        const newImages = await Promise.all(
+            images.map(async(element)=>{
+                let newUrlImage = {};
+                const urlImage = await getBucketImage(element.name);
+                console.log('*******Bucket', urlImage);
+                newUrlImage =element;
+                
+                if(urlImage.result){
+                    newUrlImage.url = urlImage.url;
+                }else if(!urlImage.result){
+                    newUrlImage.url = "";
+                }
+                
+                return newUrlImage;
+            })
+        );
+
+        console.log('****************resulttttttttt', newImages);
+        return newImages;
 
 }
 
@@ -218,16 +237,30 @@ console.log('**********', req.body);
         || !req.body.titulo
         || req.body.autor === undefined
         || !req.body.autor
-        || req.body.userType === undefined
-        || !req.body.userType){
+        || req.params.userType === undefined
+        || !req.params.userType){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
         }
-    const blogResult = await Blog.find({$and:[
-                                       { $or: [{titulo: req.body.titulo.toString()},
-                                               {autor: req.body.autor.toString()}
-                                              ]},
-                                       { $or:[{estado:true}]}
-                                      ]})
+    let blogResult;
+
+    if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
+        blogResult = await Blog.find({$and:[
+            { $or: [{titulo: req.body.titulo.toString()},
+                    {autor: req.body.autor.toString()}
+                   ]},
+            { $or:[{eliminado:false}]}
+           ]})
+    }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
+        blogResult = await Blog.find({$and:[
+            { $or: [{titulo: req.body.titulo.toString()},
+                    {autor: req.body.autor.toString()}
+                   ]},
+            { $or:[{estado:true}]}
+           ]})
+    }else{
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+    }
+
     if(blogResult.length === 0){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
     }
@@ -848,6 +881,76 @@ export const deleteImageOfCollection = async (idImage)=>{
     }
 return response;
 
-};
+}
 
+export const getBucketImageTest = async(req, res)=>{
+    const parameters = req.body;
+    
+    const response = await getBucketImage(parameters.fileName);
+    return res.json(response);
+    
+}
+
+export const getBucketImage = async(fileName)=>{
+    console.log('************fileName', fileName);
+    return new Promise((resolve,reject)=>{
+        const s3 = new AWS.S3({
+            accessKeyId: config.ACCESS_KEY,
+            secretAccessKey: config.SECRET_KEY,
+            region:config.REGION
+        });
+        let params = {
+            Bucket: config.BUCKET,
+            Key: fileName.toString()
+        }
+        s3.getObject(params, function(err, data) {
+            if (err){
+                console.log("[S3Service.getObject.ERROR]",err);
+                return resolve(
+                    {"result":false,
+                    "responseCode": ErrConst.codTransaccionError
+                });
+            }
+            
+            // let objectData = data.Body.toString('base64');
+            // console.log("[S3Service.getObject.SUCCESS]");
+            return resolve({
+                "result":true,
+                // "data": objectData,
+                "url": s3.getSignedUrl('getObject', { Bucket: config.BUCKET, Key: fileName })
+            });
+
+        });        
+    })
+}
+
+export const getBlogByIdTest = async(req, res)=>{
+    
+    if( !req.params.idBlog
+        || req.params.idBlog === undefined){
+            return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+    
+    const blogResult = await Blog.find({_id:req.params.idBlog});
+    if(blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+    }
+    const response = await Promise.all(
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            let jsonResult = {};
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult[0];
+            element.resultado = jsonResult;
+
+            return element.resultado;
+        })
+    )
+    if(!response || response.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+    }
+    return res.json(response);
+}
 
