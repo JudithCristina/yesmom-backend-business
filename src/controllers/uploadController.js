@@ -334,6 +334,7 @@ export const updateBlog = async(req,res)=>{
             console.log('***********error', error);
             console.log('***********fields', fields);
             console.log('***********files', files);
+
             if( !req.params.idBlog
                 || !files.imgBlog
                 || !files.imgAutor
@@ -344,16 +345,17 @@ export const updateBlog = async(req,res)=>{
                 || !fields.fecha
                 
                 || req.params.idBlog === undefined
-                || files.imgBlog.length ===0
-                || files.imgAutor.length ===0
-                || fields.titulo.length ===0
-                || fields.autor.length ===0
-                || fields.contenido.length ===0
-                || fields.estado.length ===0
-                || fields.fecha.length ===0){
+                || files.imgBlog.includes('')
+                || files.imgAutor.includes('')
+                || fields.titulo.includes('')
+                || fields.autor.includes('')
+                || fields.contenido.includes('')
+                || fields.estado.includes('')
+                || fields.fecha.includes('')){
     
                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
             }
+            console.log('*****paso validacion');
             // VALIDAR ID
             if(!isValidObjectId(req.params.idBlog)){
                 const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
@@ -525,6 +527,7 @@ export const deleteBlog = async(req,res)=>{
     // CAMBIAR DE POST A GET -> cambiar a req.params
     //const form = new multiparty.Form();
     //form.parse(req, async(error,fields,files)=>{
+        let response = {};
         if(!req.params.idBlog || req.params.idBlog === undefined){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));  
         }
