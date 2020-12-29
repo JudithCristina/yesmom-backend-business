@@ -8,6 +8,7 @@ router.get('/getBlogParameters/:userType',uploadCtrl.getBlogByParameters);
 router.get('/getBlogAll/:userType',uploadCtrl.getBlog);
 router.get('/delete-blog/:idBlog', uploadCtrl.deleteBlog);
 router.put('/update/:idBlog', uploadCtrl.updateBlog);
+router.get('/getBlog/:idBlog', uploadCtrl.getBlogIndividualById);
 
 // router.put('/test/update/:idBlog', uploadCtrl.updateTest);
 // router.get('/test/getImages', uploadCtrl.getImageBlogTest);
