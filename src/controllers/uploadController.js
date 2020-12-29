@@ -294,6 +294,7 @@ export const getBlogByParameters = async(req, res)=>{
 }
 
 export const getBlog = async(req,res)=>{
+  console.log(req.query, ":)")
     if(req.params.userType === undefined
         || !req.params.userType){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
@@ -302,7 +303,12 @@ export const getBlog = async(req,res)=>{
     if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
         blogResult = await Blog.find({eliminado: false});
     }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
-        blogResult = await Blog.find({estado: true})
+        if(req.query.limit === "all"){
+            blogResult = await Blog.find({estado: true})
+        } else {
+            const limit= parseInt(req.query.limit)
+            blogResult = await Blog.find({estado: true}).limit(limit)
+        }
     }else{
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     } 
@@ -332,6 +338,7 @@ export const getBlog = async(req,res)=>{
 export const updateBlog = async(req,res)=>{
     const form = new multiparty.Form();
     form.parse(req, async(error, fields, files)=>{
+        console.log("🚀 ~ file: uploadController.js ~ line 341 ~ form.parse ~  fields,",  fields,)
         if(error){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
         }
@@ -361,6 +368,7 @@ export const updateBlog = async(req,res)=>{
             let parameters = {};
             parameters.files = files;
             parameters.fields = fields;
+            
      
             let arrayFiles = [];
      

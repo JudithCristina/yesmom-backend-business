@@ -1,5 +1,5 @@
 import { config } from 'dotenv';
-config();
+config({});
 
 
 module.exports = {
