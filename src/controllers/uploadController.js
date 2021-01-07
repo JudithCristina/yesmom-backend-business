@@ -236,10 +236,10 @@ export const getImageBlog = async(element)=>{
 }
 
 export const getBlogByParameters = async(req, res)=>{
-    if(req.body.titulo === undefined
-        && req.body.autor === undefined
-        || !req.body.titulo
-        && !req.body.autor
+    if(req.query.titulo === undefined
+        && req.query.autor === undefined
+        || !req.query.titulo
+        && !req.query.autor
         || req.params.userType === undefined
         || !req.params.userType){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
@@ -248,15 +248,15 @@ export const getBlogByParameters = async(req, res)=>{
 
     if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
         blogResult = await Blog.find({$and:[
-            { $or: [{titulo: req.body.titulo.toString()},
-                    {autor: req.body.autor.toString()}
+            { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
+                    {autor: (req.query.autor)?req.query.autor:undefined}
                    ]},
             { $or:[{eliminado:false}]}
            ]})
     }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
         blogResult = await Blog.find({$and:[
-            { $or: [{titulo: req.body.titulo.toString()},
-                    {autor: req.body.autor.toString()}
+            { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
+                    {autor: (req.query.autor)?req.query.autor:undefined}
                    ]},
             { $or:[{estado:true}]}
            ]})
