@@ -236,6 +236,7 @@ export const getImageBlog = async(element)=>{
 }
 
 export const getBlogByParameters = async(req, res)=>{
+    console.log(req.query, "jujuju")
     if(req.query.titulo === undefined
         && req.query.autor === undefined
         || !req.query.titulo
