@@ -15,26 +15,26 @@ import Blog from '../models/blog.model';
 
 export const uploadImage = async (value)=>{
     let input = value;
-  
+
     const BUCKET = config.BUCKET;
     const REGION = config.REGION;
     const ACCESS_KEY = config.ACCESS_KEY;
     const SECRET_KEY = config.SECRET_KEY;
-    
+
     let pathImage = input.file;
 
     let extension = path.extname(pathImage);
     let file = path.basename(pathImage,extension);
-      
+
     let imageRemoteName = file + '_' + new Date().getTime() + extension;
-    
+
     AWS.config.update({
         accessKeyId:ACCESS_KEY,
         secretAccessKey:SECRET_KEY,
         region:REGION
     });
-    
-    
+
+
     return new Promise((resolve, reject)=>{
         const  s3 = new AWS.S3();
         s3.putObject({
@@ -75,14 +75,16 @@ export const saveData = async(req, res)=>{
             || !fields.titulo
             || !fields.autor
             || !fields.contenido
+            || !fields.descripcion
             || !fields.estado
             || !fields.fecha
-            
+
             || files.imgBlog.length ===0
             || files.imgAutor.length ===0
             || fields.titulo.length ===0
             || fields.autor.length ===0
             || fields.contenido.length ===0
+            || fields.descripcion.length ===0
             || fields.estado.length ===0
             || fields.fecha.length ===0){
 
@@ -92,88 +94,89 @@ export const saveData = async(req, res)=>{
         let parameters = {};
         parameters.files = files;
         parameters.fields = fields;
- 
+
         let arrayFiles = [];
- 
+
         let imgJsonBlog = {};
         imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
         imgJsonBlog.file = parameters.files.imgBlog[0].path;
         imgJsonBlog.originalFilename = parameters.files.imgBlog[0].originalFilename;
-    
+
         arrayFiles.push(imgJsonBlog);
-    
+
         let imgJsonAutor = {};
-    
+
         imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
         imgJsonAutor.file = parameters.files.imgAutor[0].path;
         imgJsonAutor.originalFilename = parameters.files.imgAutor[0].originalFilename;
-    
+
         arrayFiles.push(imgJsonAutor);
-    
+
         let count = 0;
         let principalImage;
         let authorImage;
         let response = {};
-    
+
         try{
             arrayFiles.forEach(async (element)=>{
                 const valor = await uploadImage(element);
-                      
+
                 // let url = valor.url;
                 let name = valor.name;
                 let typeImage = valor.typeImage;
-             
+
                 let tagString = valor.response.ETag;
                 const tag = await Util.findString(tagString);
-        
+
                 let result = {};
-                
+
                 result.name = name;
                 result.tag = tag;
                 // result.url = url;
                 result.typeImage = typeImage;
                 result.fecha = new Date().toISOString();
-        
+
                 const newImage = new Image(result);
                 const image = await newImage.save();
-               
+
                 if(principalImage==undefined){
                 principalImage = (typeImage===DomainConstant.TYPE_IMAGE.PRINCIPAL)?image._id:undefined;
                 }
                 if(authorImage===undefined){
                     authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
-        
+
                 }
-          
+
                 count = count +1
-        
+
                 if(count == 2 && principalImage!== undefined && authorImage!==undefined){
-        
+
                     // LUEGO INSERTAR EN BLOG
                     let paramsBlog = {};
                     paramsBlog.titulo = parameters.fields.titulo[0];
                     paramsBlog.autor = parameters.fields.autor[0];
                     paramsBlog.contenido = parameters.fields.contenido[0];
+                    paramsBlog.descripcion = parameters.fields.descripcion[0];
                     paramsBlog.estado = (parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false;
                     paramsBlog.fecha = new Date(parameters.fields.fecha[0]).toISOString();
                     paramsBlog.imgPrincipal = principalImage
                     paramsBlog.imgAutor = authorImage;
                     paramsBlog.eliminado = false;
-            
+
                     const newBlog = new Blog(paramsBlog);
                     await newBlog.save();
-    
+
                     response.subida = true;
                     response.code = DomainConstant.SUCCESS;
-    
+
                     res.json({
                         response
                     })
                 }
-                
+
             });
-        
-    
+
+
         }catch(err){
             console.log('[Error]', err);
             response.subida = false;
@@ -182,14 +185,14 @@ export const saveData = async(req, res)=>{
                 response
             });
         }
-    
+
     });
 
 }
 
 export const getImageBlog = async(element)=>{
 
-    if(element.imgPrincipal === undefined 
+    if(element.imgPrincipal === undefined
         || element.imgAutor === undefined
         || !element.imgPrincipal
         || !element.imgAutor){
@@ -205,7 +208,7 @@ export const getImageBlog = async(element)=>{
 
         const images = await Image.find({
             "_id" : { "$in":[element.imgPrincipal, element.imgAutor]}
-        }) 
+        })
         if(images.length === 0){
             const result = (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
             return result;
@@ -214,7 +217,7 @@ export const getImageBlog = async(element)=>{
             images.map(async(element)=>{
                 let newUrlImage = {};
                 const urlImage = await getBucketImage(element.name);
-                
+
                 if(urlImage.result){
                     newUrlImage._id = element._id;
                     newUrlImage.name = element.name;
@@ -236,28 +239,27 @@ export const getImageBlog = async(element)=>{
 }
 
 export const getBlogByParameters = async(req, res)=>{
-    console.log(req.query, "jujuju")
     if(req.query.titulo === undefined
-        && req.query.autor === undefined
+        && req.query.id === undefined
         || !req.query.titulo
-        && !req.query.autor
+        && !req.query.id
         || req.params.userType === undefined
         || !req.params.userType){
-            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
         }
     let blogResult;
 
     if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
         blogResult = await Blog.find({$and:[
             { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
-                    {autor: (req.query.autor)?req.query.autor:undefined}
+                    {_id: (req.query.id)?req.query.id:undefined}
                    ]},
             { $or:[{eliminado:false}]}
            ]})
     }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
         blogResult = await Blog.find({$and:[
             { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
-                    {autor: (req.query.autor)?req.query.autor:undefined}
+                    {_id: (req.query.id)?req.query.id:undefined}
                    ]},
             { $or:[{estado:true}]}
            ]})
@@ -266,7 +268,7 @@ export const getBlogByParameters = async(req, res)=>{
     }
 
     if(blogResult.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
 
     const response = await Promise.all(
@@ -281,23 +283,23 @@ export const getBlogByParameters = async(req, res)=>{
             element.resultado = jsonResult;
 
             return element.resultado;
-            
+
          })
 
     );
     if(!response || response.length ===0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
 
-    return res.json(response); 
-    
+    return res.json(response);
+
 }
 
 export const getBlog = async(req,res)=>{
   console.log(req.query, ":)")
     if(req.params.userType === undefined
         || !req.params.userType){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
     let blogResult;
     if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
@@ -311,11 +313,11 @@ export const getBlog = async(req,res)=>{
         }
     }else{
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
-    } 
-    if(!blogResult || blogResult.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
     }
-    
+    if(!blogResult || blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
+    }
+
     const response = await Promise.all(
         blogResult.map(async(element)=>{
             let arrayResult = [];
@@ -330,7 +332,7 @@ export const getBlog = async(req,res)=>{
         })
     );
     if(!response || response.length ===0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));     
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     return res.json(response);
 }
@@ -346,13 +348,15 @@ export const updateBlog = async(req,res)=>{
             || !fields.titulo
             || !fields.autor
             || !fields.contenido
+            || !fields.descripcion
             || !fields.estado
             || !fields.fecha
-            
+
             || req.params.idBlog === undefined
             || fields.titulo.includes('')
             || fields.autor.includes('')
             || fields.contenido.includes('')
+            || fields.descripcion.includes('')
             || fields.estado.includes('')
             || fields.fecha.includes('')){
 
@@ -368,26 +372,26 @@ export const updateBlog = async(req,res)=>{
             let parameters = {};
             parameters.files = files;
             parameters.fields = fields;
-            
-     
+
+
             let arrayFiles = [];
-     
+
             if(files.imgBlog){
                 let imgJsonBlog = {};
                 imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
                 imgJsonBlog.file = parameters.files.imgBlog[0].path;
                 imgJsonBlog.originalFilename = parameters.files.imgBlog[0].originalFilename;
-            
+
                 arrayFiles.push(imgJsonBlog);
             }
 
             if(files.imgAutor){
                 let imgJsonAutor = {};
-        
+
                 imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
                 imgJsonAutor.file = parameters.files.imgAutor[0].path;
                 imgJsonAutor.originalFilename = parameters.files.imgAutor[0].originalFilename;
-            
+
                 arrayFiles.push(imgJsonAutor);
             }
 
@@ -412,7 +416,7 @@ export const updateBlog = async(req,res)=>{
                     break;
                 default:
                     countDelete = 0;
-                    
+
             }
 
             switch(countDelete){
@@ -425,6 +429,7 @@ export const updateBlog = async(req,res)=>{
                         {$set:{"titulo":parameters.fields.titulo[0],
                                 "autor":parameters.fields.autor[0],
                                 "contenido":parameters.fields.contenido[0],
+                                "descripcion": parameters.fields.descripcion[0],
                                 "estado":(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                                 "fecha":new Date(parameters.fields.fecha[0]).toISOString(),
                                 "eliminado":false
@@ -441,7 +446,7 @@ export const updateBlog = async(req,res)=>{
                     // FILTRO LA IMAGEN A BORRAR
                     let filterImage = blogResult[0].imagenes.find((item) => item.typeImage === arrayFiles[0].type);
                     console.log('*******filerImage', filterImage);
-                    
+
                     // BORRO LA IMAGEN DEL S3
                     await deleteImage(filterImage.name);
 
@@ -453,7 +458,7 @@ export const updateBlog = async(req,res)=>{
                     let authorImage;
 
                     let parametersTransaction = {};
-                    
+
                     const resultUpdate = await Promise.all(
                             arrayFiles.map(async(element)=>{
                                 const valor = await uploadImage(element);
@@ -469,7 +474,7 @@ export const updateBlog = async(req,res)=>{
                                 paramsImages.tag = tag;
                                 paramsImages.typeImage = typeImage;
                                 paramsImages.fecha = new Date().toISOString();
-                                
+
                                 // GUARDO LA IMAGEN EN MONGO DB
                                 const newImage = new Image(paramsImages);
                                 const image = await newImage.save();
@@ -479,15 +484,16 @@ export const updateBlog = async(req,res)=>{
                                 }
                                 if(authorImage===undefined){
                                     authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
-                        
+
                                 }
 
                                 // ACTUALIZO EL BLOG
-                                
+
                                 parametersTransaction._id = req.params.idBlog;
                                 parametersTransaction.titulo = parameters.fields.titulo[0];
                                 parametersTransaction.autor = parameters.fields.autor[0]
                                 parametersTransaction.contenido = parameters.fields.contenido[0];
+                                parametersTransaction.descripcion = parameters.fields.descripcion[0];
                                 parametersTransaction.estado =(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false;
                                 parametersTransaction.fecha = new Date(parameters.fields.fecha[0]).toISOString();
                                 parametersTransaction.imgPrincipal = (filterImage.typeImage === DomainConstant.TYPE_IMAGE.PRINCIPAL)?principalImage:blogResult[0].blog.imgPrincipal;
@@ -498,7 +504,7 @@ export const updateBlog = async(req,res)=>{
 
                                 parametersTransaction.update = true;
                                 parametersTransaction.code = DomainConstant.SUCCESS;
-                                
+
                                 element.update = parametersTransaction;
                                 return element.update;
                             })
@@ -555,7 +561,7 @@ export const updateBlog = async(req,res)=>{
                             paramsImages.tag = tag;
                             paramsImages.typeImage = typeImage;
                             paramsImages.fecha = new Date().toISOString();
-                            
+
                             // GUARDO LA IMAGEN EN MONGO DB
                             const newImage = new Image(paramsImages);
                             const image = await newImage.save();
@@ -565,15 +571,16 @@ export const updateBlog = async(req,res)=>{
                             }
                             if(authorImageCase2===undefined){
                                 authorImageCase2 =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
-                    
+
                             }
                             count = count + 1
                             // ACTUALIZO EL BLOG
                             if(count == 2 && principalImageCase2!== undefined && authorImageCase2!==undefined){
                                 parametersTransactionCase2._id = req.params.idBlog;
                                 parametersTransactionCase2.titulo = parameters.fields.titulo[0];
-                                parametersTransactionCase2.autor = parameters.fields.autor[0]
-                                parametersTransactionCase2.contenido = parameters.fields.contenido[0]
+                                parametersTransactionCase2.autor = parameters.fields.autor[0];
+                                parametersTransactionCase2.contenido = parameters.fields.contenido[0];
+                                parametersTransactionCase2.descripcion = parameters.fields.descripcion[0];
                                 parametersTransactionCase2.estado =(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                                 parametersTransactionCase2.fecha = new Date(parameters.fields.fecha[0]).toISOString(),
                                 parametersTransactionCase2.imgPrincipal = principalImageCase2;
@@ -584,26 +591,26 @@ export const updateBlog = async(req,res)=>{
 
                                 parametersTransactionCase2.update = true;
                                 parametersTransactionCase2.code = DomainConstant.SUCCESS;
-                                
+
                                 console.log('*******parametersTransactionCase2', parametersTransactionCase2)
 
                                 if(!resultTransactionCase2){
                                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
                                 }
                                 return res.json(parametersTransactionCase2);
-                                
+
                             }
-                            
-                            
+
+
                         })
                     //)
-                    
+
 
                 default:
                     break;
-                
+
             }
-        
+
     });
 }
 
@@ -614,7 +621,7 @@ export const deleteBlog = async(req,res)=>{
     //form.parse(req, async(error,fields,files)=>{
         let response = {};
         if(!req.params.idBlog || req.params.idBlog === undefined){
-            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));  
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
         }
         // VALIDAR ID
         if(!isValidObjectId(req.params.idBlog)){
@@ -650,15 +657,15 @@ export const deleteBlog = async(req,res)=>{
 }
 
 export const getBlogById = async(idBlog)=>{
-    
+
     if( !idBlog
         || idBlog === undefined){
             return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
-    
+
     const blogResult = await Blog.find({_id:idBlog});
     if(blogResult.length === 0){
-        return (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     const response = await Promise.all(
         blogResult.map(async(element)=>{
@@ -674,7 +681,7 @@ export const getBlogById = async(idBlog)=>{
         })
     )
     if(!response || response.length === 0){
-        return (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     return response;
 }
@@ -689,7 +696,7 @@ export const getBlogById = async(idBlog)=>{
 //         || !req.body.contenido
 //         || !req.body.estado
 //         || !req.body.fecha
-        
+
 //         || req.params.idBlog === undefined
 //         || req.body.imgBlog.length === undefined
 //         || req.body.imgAutor.length ===undefined
@@ -710,27 +717,27 @@ export const getBlogById = async(idBlog)=>{
 //     // TO DO: VALIDAR SI HAY CAMBIO DE IMGS
 //         let parameters = req.body
 //         let arrayFiles = [];
-     
+
 //     let imgJsonBlog = {};
 //     imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
 //     imgJsonBlog.file = parameters.imgBlog;
 //     // imgJsonBlog.originalFilename = parameters.files.imgBlog[0].originalFilename;
-        
+
 //     arrayFiles.push(imgJsonBlog);
-        
+
 //     let imgJsonAutor = {};
-        
+
 //     imgJsonAutor.type = DomainConstant.TYPE_IMAGE.AUTHOR;
 //     imgJsonAutor.file = parameters.imgAutor;
 //     // imgJsonAutor.originalFilename = parameters.files.imgAutor[0].originalFilename;
-        
+
 //     arrayFiles.push(imgJsonAutor);
-        
+
 //     let count = 0;
 //     let principalImage;
 //     let authorImage;
 //     let response = {};
-    
+
 //     const blogResult = await getBlogById(req.params.idBlog);
 
 //     //BORRO LAS IMAGENES ACTUALES DEL S3
@@ -752,7 +759,7 @@ export const getBlogById = async(idBlog)=>{
 //                         return item.deleteItem;
 //                     })
 //                 )
-                
+
 //                 if(mapImage.length > 0){
 //                    element.imagenes = mapImage;
 //                 }
@@ -760,9 +767,9 @@ export const getBlogById = async(idBlog)=>{
 //                 return element;
 //             })
 //         );
- 
+
 //         if(responseDelete[0].imagenes.length < 2){
-//             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));        
+//             return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
 //         }
 //         // BORRO IMAGEN DE LA COLLECTION
 //        const resultDeleteImage = await Promise.all(
@@ -770,7 +777,7 @@ export const getBlogById = async(idBlog)=>{
 //                     let arrayDel = [];
 //                     let jsonDel = {};
 //                     const responseDelImgPrincipal = await deleteImageOfCollection(element.blog.imgPrincipal);
-//                     const responseDelImgAuthor = await deleteImageOfCollection(element.blog.imgAutor); 
+//                     const responseDelImgAuthor = await deleteImageOfCollection(element.blog.imgAutor);
 //                     arrayDel.push(responseDelImgPrincipal);
 //                     arrayDel.push(responseDelImgAuthor);
 //                     jsonDel.imgPrincipalDel = responseDelImgPrincipal;
@@ -784,22 +791,22 @@ export const getBlogById = async(idBlog)=>{
 //         // CONTINUO EL FLUJO
 //         arrayFiles.forEach(async (element)=>{
 //             const valor = await uploadImage(element);
-           
+
 //             // let url = valor.url;
 //             let name = valor.name;
 //             let typeImage = valor.typeImage;
 
 //             let tagString = valor.response.ETag;
 //             const tag = await Util.findString(tagString);
-    
+
 //             let result = {};
-            
+
 //             result.name = name;
 //             result.tag = tag;
 //             // result.url = url;
 //             result.typeImage = typeImage;
 //             result.fecha = new Date().toISOString();
-    
+
 //             const newImage = new Image(result);
 //             const image = await newImage.save();
 
@@ -808,11 +815,11 @@ export const getBlogById = async(idBlog)=>{
 //             }
 //             if(authorImage===undefined){
 //                 authorImage =  (typeImage===DomainConstant.TYPE_IMAGE.AUTHOR)?image._id:undefined;
-    
+
 //             }
-      
+
 //             count = count +1
-  
+
 //             if(count == 2 && principalImage!== undefined && authorImage!==undefined){
 
 //                 // ACTUALIZAR
@@ -832,7 +839,7 @@ export const getBlogById = async(idBlog)=>{
 //                 response.update = true;
 //                 response.code = DomainConstant.SUCCESS;
 //                 response.content = resultDeleteImage
-                
+
 //                 if(!result){
 //                     return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
 //                 }
@@ -860,14 +867,14 @@ export const validateBucketImage = async(value)=>{
     const REGION = config.REGION;
     const ACCESS_KEY = config.ACCESS_KEY;
     const SECRET_KEY = config.SECRET_KEY;
-    
+
     let pathImage = input.file;
 
     let extension = path.extname(pathImage);
     let file = path.basename(pathImage,extension);
-      
+
     //let imageRemoteName = file + '_' + new Date().getTime() + extension;
-    
+
     AWS.config.update({
         accessKeyId:ACCESS_KEY,
         secretAccessKey:SECRET_KEY,
@@ -890,7 +897,7 @@ export const validateBucketImage = async(value)=>{
             result.response = true;
             result.message = 'Existe'
             return result; //EXISTE
-        }      
+        }
     }catch(headErr){
         console.log('***********', headErr)
         if (headErr.code === 'NotFound') {
@@ -904,7 +911,7 @@ export const validateBucketImage = async(value)=>{
 
 export const deleteImage = async(fileName)=>{
     console.log('********fileName', fileName);
-  
+
     return new Promise((resolve,reject)=>{
         const s3 = new AWS.S3({
             accessKeyId: config.ACCESS_KEY,
@@ -931,13 +938,13 @@ export const deleteImage = async(fileName)=>{
             }
         })
     })
-    
+
 
 }
 
 // export const getImageBlogTest = async(req, res)=>{
 
-//     if(req.body.imgPrincipal === undefined 
+//     if(req.body.imgPrincipal === undefined
 //         || req.body.imgAutor === undefined
 //         || !req.body.imgPrincipal
 //         || !req.body.imgAutor){
@@ -953,12 +960,12 @@ export const deleteImage = async(fileName)=>{
 
 //         const images = await Image.find({
 //             "_id" : { "$in":[req.body.imgPrincipal, req.body.imgAutor]}
-//         }) 
+//         })
 //         if(images.length === 0){
 //             const result = (ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
 //             return res.json(result);
 //         }
-    
+
 //         return res.json(images);
 
 // }
@@ -983,10 +990,10 @@ return response;
 
 export const getBucketImageTest = async(req, res)=>{
     const parameters = req.body;
-    
+
     const response = await getBucketImage(parameters.fileName);
     return res.json(response);
-    
+
 }
 
 export const getBucketImage = async(fileName)=>{
@@ -1008,7 +1015,7 @@ export const getBucketImage = async(fileName)=>{
                     "responseCode": ErrConst.codTransaccionError
                 });
             }
-            
+
             // let objectData = data.Body.toString('base64');
             // console.log("[S3Service.getObject.SUCCESS]");
             return resolve({
@@ -1017,20 +1024,20 @@ export const getBucketImage = async(fileName)=>{
                 "url": s3.getSignedUrl('getObject', { Bucket: config.BUCKET, Key: fileName })
             });
 
-        });        
+        });
     })
 }
 
 export const getBlogByIdTest = async(req, res)=>{
-    
+
     if( !req.params.idBlog
         || req.params.idBlog === undefined){
             return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
-    
+
     const blogResult = await Blog.find({_id:req.params.idBlog});
     if(blogResult.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     const response = await Promise.all(
         blogResult.map(async(element)=>{
@@ -1046,7 +1053,7 @@ export const getBlogByIdTest = async(req, res)=>{
         })
     )
     if(!response || response.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     return res.json(response);
 }
@@ -1057,6 +1064,7 @@ export const updatBlogTransaction = async(payload)=>{
         {$set:{"titulo":payload.titulo,
                 "autor":payload.autor,
                 "contenido":payload.contenido,
+                "descripcion":payload.descripcion,
                 "estado":(payload.estado === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                 "fecha":new Date(payload.fecha).toISOString(),
                 "imgPrincipal":payload.imgPrincipal, // TO DO:VALIDAR CAMPO
@@ -1070,15 +1078,15 @@ export const updatBlogTransaction = async(payload)=>{
 }
 
 export const getBlogIndividualById = async(req, res)=>{
-    
+
     if( !req.params.idBlog
         || req.params.idBlog === undefined){
             return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
     }
-    
+
     const blogResult = await Blog.find({_id:req.params.idBlog});
     if(blogResult.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     const response = await Promise.all(
         blogResult.map(async(element)=>{
@@ -1094,7 +1102,7 @@ export const getBlogIndividualById = async(req, res)=>{
         })
     )
     if(!response || response.length === 0){
-        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));
     }
     return res.json(response);
 }
