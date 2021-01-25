@@ -75,6 +75,7 @@ export const saveData = async(req, res)=>{
             || !fields.titulo
             || !fields.autor
             || !fields.contenido
+            || !fields.descripcion
             || !fields.estado
             || !fields.fecha
             
@@ -83,6 +84,7 @@ export const saveData = async(req, res)=>{
             || fields.titulo.length ===0
             || fields.autor.length ===0
             || fields.contenido.length ===0
+            || fields.descripcion.length ===0
             || fields.estado.length ===0
             || fields.fecha.length ===0){
 
@@ -154,6 +156,7 @@ export const saveData = async(req, res)=>{
                     paramsBlog.titulo = parameters.fields.titulo[0];
                     paramsBlog.autor = parameters.fields.autor[0];
                     paramsBlog.contenido = parameters.fields.contenido[0];
+                    paramsBlog.descripcion = parameters.fields.descripcion[0];
                     paramsBlog.estado = (parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false;
                     paramsBlog.fecha = new Date(parameters.fields.fecha[0]).toISOString();
                     paramsBlog.imgPrincipal = principalImage
@@ -236,10 +239,10 @@ export const getImageBlog = async(element)=>{
 }
 
 export const getBlogByParameters = async(req, res)=>{
-    if(req.body.titulo === undefined
-        || !req.body.titulo
-        || req.body.autor === undefined
-        || !req.body.autor
+    if(req.query.titulo === undefined
+        && req.query.autor === undefined
+        || !req.query.titulo
+        && !req.query.autor
         || req.params.userType === undefined
         || !req.params.userType){
             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));       
@@ -248,15 +251,15 @@ export const getBlogByParameters = async(req, res)=>{
 
     if(req.params.userType===DomainConstant.USER_TYPE.ADMIN){
         blogResult = await Blog.find({$and:[
-            { $or: [{titulo: req.body.titulo.toString()},
-                    {autor: req.body.autor.toString()}
+            { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
+                    {autor: (req.query.autor)?req.query.autor:undefined}
                    ]},
             { $or:[{eliminado:false}]}
            ]})
     }else if(req.params.userType===DomainConstant.USER_TYPE.USER){
         blogResult = await Blog.find({$and:[
-            { $or: [{titulo: req.body.titulo.toString()},
-                    {autor: req.body.autor.toString()}
+            { $or: [{titulo: (req.query.titulo)?req.query.titulo:undefined},
+                    {autor: (req.query.autor)?req.query.autor:undefined}
                    ]},
             { $or:[{estado:true}]}
            ]})
@@ -267,7 +270,6 @@ export const getBlogByParameters = async(req, res)=>{
     if(blogResult.length === 0){
         return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
     }
-    console.log('*********blogResult', blogResult);
 
     const response = await Promise.all(
 
@@ -346,6 +348,7 @@ export const updateBlog = async(req,res)=>{
             || !fields.titulo
             || !fields.autor
             || !fields.contenido
+            || !fields.descripcion
             || !fields.estado
             || !fields.fecha
             
@@ -353,6 +356,7 @@ export const updateBlog = async(req,res)=>{
             || fields.titulo.includes('')
             || fields.autor.includes('')
             || fields.contenido.includes('')
+            || fields.descripcion.includes('')
             || fields.estado.includes('')
             || fields.fecha.includes('')){
 
@@ -425,6 +429,7 @@ export const updateBlog = async(req,res)=>{
                         {$set:{"titulo":parameters.fields.titulo[0],
                                 "autor":parameters.fields.autor[0],
                                 "contenido":parameters.fields.contenido[0],
+                                "descripcion": parameters.fields.descripcion[0],
                                 "estado":(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                                 "fecha":new Date(parameters.fields.fecha[0]).toISOString(),
                                 "eliminado":false
@@ -488,6 +493,7 @@ export const updateBlog = async(req,res)=>{
                                 parametersTransaction.titulo = parameters.fields.titulo[0];
                                 parametersTransaction.autor = parameters.fields.autor[0]
                                 parametersTransaction.contenido = parameters.fields.contenido[0];
+                                parametersTransaction.descripcion = parameters.fields.descripcion[0];
                                 parametersTransaction.estado =(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false;
                                 parametersTransaction.fecha = new Date(parameters.fields.fecha[0]).toISOString();
                                 parametersTransaction.imgPrincipal = (filterImage.typeImage === DomainConstant.TYPE_IMAGE.PRINCIPAL)?principalImage:blogResult[0].blog.imgPrincipal;
@@ -572,8 +578,9 @@ export const updateBlog = async(req,res)=>{
                             if(count == 2 && principalImageCase2!== undefined && authorImageCase2!==undefined){
                                 parametersTransactionCase2._id = req.params.idBlog;
                                 parametersTransactionCase2.titulo = parameters.fields.titulo[0];
-                                parametersTransactionCase2.autor = parameters.fields.autor[0]
-                                parametersTransactionCase2.contenido = parameters.fields.contenido[0]
+                                parametersTransactionCase2.autor = parameters.fields.autor[0];
+                                parametersTransactionCase2.contenido = parameters.fields.contenido[0];
+                                parametersTransactionCase2.descripcion = parameters.fields.descripcion[0];
                                 parametersTransactionCase2.estado =(parameters.fields.estado[0] === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                                 parametersTransactionCase2.fecha = new Date(parameters.fields.fecha[0]).toISOString(),
                                 parametersTransactionCase2.imgPrincipal = principalImageCase2;
@@ -681,35 +688,37 @@ export const getBlogById = async(idBlog)=>{
 
 export const updateTest = async(req,res)=>{
 
-     if( !req.params.idBlog
-         || !req.body.imgBlog
-         || !req.body.imgAutor
-         || !req.body.titulo
-         || !req.body.autor
-         || !req.body.contenido
-         || !req.body.estado
-         || !req.body.fecha
+    if( !req.params.idBlog
+        || !req.body.imgBlog
+        || !req.body.imgAutor
+        || !req.body.titulo
+        || !req.body.autor
+        || !req.body.contenido
+        || !req.body.descripcion
+        || !req.body.estado
+        || !req.body.fecha
         
-         || req.params.idBlog === undefined
-         || req.body.imgBlog.length === undefined
-         || req.body.imgAutor.length ===undefined
-         || req.body.titulo.length ===undefined
-         || req.body.autor.length ===undefined
-         || req.body.contenido.length ===undefined
-         || req.body.estado.length ===undefined
-         || req.body.fecha.length ===undefined){
+        || req.params.idBlog === undefined
+        || req.body.imgBlog.length === undefined
+        || req.body.imgAutor.length ===undefined
+        || req.body.titulo.length ===undefined
+        || req.body.autor.length ===undefined
+        || req.body.contenido.length ===undefined
+        || req.body.descripcion.length === undefined
+        || req.body.estado.length ===undefined
+        || req.body.fecha.length ===undefined){
 
-             return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
-     }
-     // VALIDAR ID
-     if(!isValidObjectId(req.params.idBlog)){
-         const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
-         return result;
-     };
-     // SUBIR IMAGEN A AWS
-     // TO DO: VALIDAR SI HAY CAMBIO DE IMGS
-         let parameters = req.body
-         let arrayFiles = [];
+            return res.json(ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+    // VALIDAR ID
+    if(!isValidObjectId(req.params.idBlog)){
+        const result =  (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+        return result;
+    };
+    // SUBIR IMAGEN A AWS
+    // TO DO: VALIDAR SI HAY CAMBIO DE IMGS
+        let parameters = req.body
+        let arrayFiles = [];
      
      let imgJsonBlog = {};
      imgJsonBlog.type = DomainConstant.TYPE_IMAGE.PRINCIPAL;
@@ -813,25 +822,26 @@ export const updateTest = async(req,res)=>{
       
              count = count +1
   
-             if(count == 2 && principalImage!== undefined && authorImage!==undefined){
+            if(count == 2 && principalImage!== undefined && authorImage!==undefined){
 
-                 // ACTUALIZAR
-                 const result = await Blog.updateOne(
-                     {"_id": req.params.idBlog},
-                     {$set:{"titulo":parameters.titulo,
-                             "autor":parameters.autor,
-                             "contenido":parameters.contenido,
-                             "estado":(parameters.estado === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
-                             "fecha":new Date(parameters.fecha).toISOString(),
-                             "imgPrincipal":principalImage,
-                             "imgAutor":authorImage,
-                             "eliminado":false
-                             }
-                     }
-                 );
-                 response.update = true;
-                 response.code = DomainConstant.SUCCESS;
-                 response.content = resultDeleteImage
+                // ACTUALIZAR
+                const result = await Blog.updateOne(
+                    {"_id": req.params.idBlog},
+                    {$set:{"titulo":parameters.titulo,
+                            "autor":parameters.autor,
+                            "contenido":parameters.contenido,
+                            "descripcion":parameters.descripcion,
+                            "estado":(parameters.estado === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
+                            "fecha":new Date(parameters.fecha).toISOString(),
+                            "imgPrincipal":principalImage,
+                            "imgAutor":authorImage,
+                            "eliminado":false
+                            }
+                    }
+                );
+                response.update = true;
+                response.code = DomainConstant.SUCCESS;
+                response.content = resultDeleteImage
                 
                  if(!result){
                      return res.json(ErrResponse.NewErrorResponse(ErrConst.codTransaccionError));
@@ -1057,6 +1067,7 @@ export const updatBlogTransaction = async(payload)=>{
         {$set:{"titulo":payload.titulo,
                 "autor":payload.autor,
                 "contenido":payload.contenido,
+                "descripcion":payload.descripcion,
                 "estado":(payload.estado === DomainConstant.ESTADOS_BLOG.ACTIVO)?true:false,
                 "fecha":new Date(payload.fecha).toISOString(),
                 "imgPrincipal":payload.imgPrincipal, // TO DO:VALIDAR CAMPO
@@ -1067,5 +1078,35 @@ export const updatBlogTransaction = async(payload)=>{
     );
 
     return result;
+}
+
+export const getBlogIndividualById = async(req, res)=>{
+    
+    if( !req.params.idBlog
+        || req.params.idBlog === undefined){
+            return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+    
+    const blogResult = await Blog.find({_id:req.params.idBlog});
+    if(blogResult.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+    }
+    const response = await Promise.all(
+        blogResult.map(async(element)=>{
+            let arrayResult = [];
+            let jsonResult = {};
+            const images = await getImageBlog(element);
+            arrayResult.push(images);
+            jsonResult.blog = element;
+            jsonResult.imagenes = arrayResult[0];
+            element.resultado = jsonResult;
+
+            return element.resultado;
+        })
+    )
+    if(!response || response.length === 0){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codNoDatos));    
+    }
+    return res.json(response);
 }
 
