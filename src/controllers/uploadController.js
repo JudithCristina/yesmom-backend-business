@@ -5,6 +5,7 @@ import { isValidObjectId } from 'mongoose';
 import multiparty from 'multiparty';
 
 import * as Util from '../util/util';
+import * as TokenUtil from '../util/api/token';
 import * as DomainConstant from '../constant/domain/domain'
 import config from '../config';
 import * as ErrConst from '../constant/errors/codes';
@@ -1085,6 +1086,19 @@ export const getBlogIndividualById = async(req, res)=>{
     if( !req.params.idBlog
         || req.params.idBlog === undefined){
             return (ErrResponse.NewErrorResponse(ErrConst.codReqInvalido));
+    }
+    const tokenHeader = req.headers['access-token'];
+    console.log('*******tokenHeader', tokenHeader);
+    
+    if(tokenHeader === undefined){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codTokenAccesoNoValido));
+    }
+    //VALIDAR TOKEN
+    const responseValidation = await TokenUtil.validateToken(tokenHeader);
+    console.log('***********responseValidation', responseValidation);
+
+    if(responseValidation === undefined){
+        return res.json(ErrResponse.NewErrorResponse(ErrConst.codTokenAccesoNoValido))  
     }
 
     const blogResult = await Blog.find({_id:req.params.idBlog});

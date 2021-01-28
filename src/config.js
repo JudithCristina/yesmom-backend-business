@@ -10,4 +10,5 @@ module.exports = {
     REGION: process.env.REGION || '',
     ACCESS_KEY: process.env.ACCESS_KEY || '',
     SECRET_KEY: process.env.SECRET_KEY || '',
+    AUTHORIZATION_URL: process.env.YESMOM_SECURITY_AUTH_URL || '',
 }
